@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Contacts{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between pb-3 mb-4 border-bottom gap-3">
+    <div>
+        <h1 class="h3 fw-bold mb-1">Import Contacts from CSV</h1>
+        <p class="text-muted mb-0">Upload your list of company contacts to queue them for daily batch dispatch.</p>
+    </div>
+    <div>
+        <a href="{% url 'mailer:download_sample_csv' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-download me-1"></i> Download Sample CSV
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Upload Form Card -->
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <h5 class="fw-bold mb-3"><i class="bi bi-file-earmark-arrow-up text-primary me-2"></i>Select CSV File</h5>
+            
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label for="{{ form.csv_file.id_for_label }}" class="form-label fw-semibold">
+                        {{ form.csv_file.label }}
+                    </label>
+                    {{ form.csv_file }}
+                    {% if form.csv_file.errors %}
+                        <div class="text-danger small mt-1">
+                            {{ form.csv_file.errors.0 }}
+                        </div>
+                    {% endif %}
+                    <div class="form-text mt-2">
+                        Supported formats: <code>.csv</code> up to 10 MB. UTF-8 encoding recommended.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload & Import Contacts
+                    </button>
+                    <a href="{% url 'mailer:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+
+            <!-- Import Result Summary if available -->
+            {% if import_result %}
+                <hr class="my-4">
+                <div class="border rounded p-3 bg-light">
+                    <h6 class="fw-bold mb-2">Import Summary:</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li><i class="bi bi-list-check text-primary me-1"></i> Total rows parsed: <strong>{{ import_result.total_rows }}</strong></li>
+                        <li><i class="bi bi-check-circle-fill text-success me-1"></i> Successfully imported: <strong class="text-success">{{ import_result.imported_count }}</strong></li>
+                        <li><i class="bi bi-intersect text-warning me-1"></i> Duplicates skipped: <strong>{{ import_result.duplicate_count }}</strong></li>
+                        <li><i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> Invalid rows: <strong class="text-danger">{{ import_result.invalid_rows|length }}</strong></li>
+                    </ul>
+
+                    {% if import_result.invalid_rows %}
+                        <div class="mt-3">
+                            <span class="fw-semibold text-danger small">Invalid Rows Breakdown:</span>
+                            <div class="table-responsive mt-1" style="max-height: 200px; overflow-y: auto;">
+                                <table class="table table-sm table-bordered bg-white small mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Row #</th>
+                                            <th>Company</th>
+                                            <th>Email</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for err in import_result.invalid_rows %}
+                                            <tr>
+                                                <td>{{ err.row }}</td>
+                                                <td>{{ err.company_name|default:'[Empty]' }}</td>
+                                                <td>{{ err.email|default:'[Empty]' }}</td>
+                                                <td class="text-danger">{{ err.reason }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Instructions and Rules Card -->
+    <div class="col-lg-5">
+        <div class="card p-4 h-100 bg-white">
+            <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>CSV Formatting Guidelines</h5>
+            
+            <p class="text-muted small">
+                Ensure your CSV file matches the expected structure before uploading.
+            </p>
+
+            <div class="p-3 bg-light rounded border mb-3">
+                <span class="small fw-bold text-uppercase text-secondary d-block mb-2">Expected Column Headers</span>
+                <table class="table table-sm table-borderless small mb-0 font-monospace">
+                    <tbody>
+                        <tr>
+                            <td class="text-primary fw-bold">company_name</td>
+                            <td class="text-muted">Name of the target company</td>
+                        </tr>
+                        <tr>
+                            <td class="text-primary fw-bold">email</td>
+                            <td class="text-muted">Target HR or careers email address</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="small text-muted mb-3">
+                <span class="fw-bold text-dark d-block mb-1">Example CSV format:</span>
+                <div class="bg-dark text-light p-3 rounded font-monospace small">
+company_name,email<br>
+Google,careers@example.com<br>
+Microsoft,hr@example.com<br>
+ABC Company,hr@abc.com
+                </div>
+            </div>
+
+            <div class="alert alert-light border small text-muted mb-0">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-shield-check text-success me-1"></i> Automatic Duplicate Protection</h6>
+                If an email address already exists in your database or is repeated multiple times inside the CSV, only the first unique entry will be kept. Duplicate records are safely skipped.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

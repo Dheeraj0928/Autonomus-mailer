@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Email Template & Settings{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between pb-3 mb-4 border-bottom gap-3">
+    <div>
+        <h1 class="h3 fw-bold mb-1">Email Template & Settings</h1>
+        <p class="text-muted mb-0">Configure the generalized inquiry template and daily sending throttle limits.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Email Template Editor -->
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-envelope-paper text-primary me-2"></i>Inquiry Email Template</h5>
+                <span class="badge bg-primary-subtle text-primary">Dynamic Variables Supported</span>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_template">
+
+                <div class="mb-3">
+                    <label for="{{ template_form.subject.id_for_label }}" class="form-label fw-semibold">
+                        Email Subject Line
+                    </label>
+                    {{ template_form.subject }}
+                    {% if template_form.subject.errors %}
+                        <div class="text-danger small mt-1">{{ template_form.subject.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ template_form.body.id_for_label }}" class="form-label fw-semibold">
+                        Email Body
+                    </label>
+                    {{ template_form.body }}
+                    {% if template_form.body.errors %}
+                        <div class="text-danger small mt-1">{{ template_form.body.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text mt-2 text-muted">
+                        <i class="bi bi-magic text-primary me-1"></i> Use <code>&#123;&#123; company_name &#125;&#125;</code> anywhere to insert the recipient's actual company name automatically.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-floppy2-fill me-1"></i> Save Email Template
+                    </button>
+                    <a href="{% url 'mailer:dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Live Preview & Sending Settings -->
+    <div class="col-lg-5 d-flex flex-column gap-4">
+        <!-- Sending Mode Settings -->
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-shield-check text-primary me-2"></i>Sending Mode & Limits</h5>
+
+            <!-- Mode Info Badges -->
+            <div class="row g-2 mb-3" id="modeCards">
+                <div class="col-12">
+                    <div class="mode-card border rounded-3 p-3 {% if app_settings.sending_mode == MODE_SAFE %}border-success bg-success-subtle{% else %}border-light{% endif %} d-flex align-items-start gap-2 cursor-pointer" data-mode="{{ MODE_SAFE }}" onclick="selectMode('{{ MODE_SAFE }}')">
+                        <div class="mt-1"><i class="bi bi-shield-fill-check fs-5 {% if app_settings.sending_mode == MODE_SAFE %}text-success{% else %}text-muted{% endif %}"></i></div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small {% if app_settings.sending_mode == MODE_SAFE %}text-success{% endif %}">🛡️ Safe Mode <span class="badge bg-success ms-1" style="font-size:0.65rem;">Recommended</span></div>
+                            <div class="text-muted" style="font-size:0.78rem;">30 emails/day &bull; 3.0s delay &bull; Gmail-friendly, avoids spam filters</div>
+                        </div>
+                        {% if app_settings.sending_mode == MODE_SAFE %}<i class="bi bi-check-circle-fill text-success mt-1"></i>{% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mode-card border rounded-3 p-3 {% if app_settings.sending_mode == MODE_NORMAL %}border-warning bg-warning-subtle{% else %}border-light{% endif %} d-flex align-items-start gap-2 cursor-pointer" data-mode="{{ MODE_NORMAL }}" onclick="selectMode('{{ MODE_NORMAL }}')">
+                        <div class="mt-1"><i class="bi bi-lightning-charge-fill fs-5 {% if app_settings.sending_mode == MODE_NORMAL %}text-warning{% else %}text-muted{% endif %}"></i></div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small {% if app_settings.sending_mode == MODE_NORMAL %}text-warning{% endif %}">⚡ Normal Mode</div>
+                            <div class="text-muted" style="font-size:0.78rem;">50 emails/day &bull; 1.5s delay &bull; Faster, mild spam risk</div>
+                        </div>
+                        {% if app_settings.sending_mode == MODE_NORMAL %}<i class="bi bi-check-circle-fill text-warning mt-1"></i>{% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mode-card border rounded-3 p-3 {% if app_settings.sending_mode == MODE_CUSTOM %}border-primary bg-primary-subtle{% else %}border-light{% endif %} d-flex align-items-start gap-2 cursor-pointer" data-mode="{{ MODE_CUSTOM }}" onclick="selectMode('{{ MODE_CUSTOM }}')">
+                        <div class="mt-1"><i class="bi bi-sliders fs-5 {% if app_settings.sending_mode == MODE_CUSTOM %}text-primary{% else %}text-muted{% endif %}"></i></div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small {% if app_settings.sending_mode == MODE_CUSTOM %}text-primary{% endif %}">⚙️ Custom Mode</div>
+                            <div class="text-muted" style="font-size:0.78rem;">Set your own limit &amp; delay manually</div>
+                        </div>
+                        {% if app_settings.sending_mode == MODE_CUSTOM %}<i class="bi bi-check-circle-fill text-primary mt-1"></i>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <form method="POST" id="settingsForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_settings">
+                <input type="hidden" name="sending_mode" id="hiddenSendingMode" value="{{ app_settings.sending_mode }}">
+
+                <!-- Custom fields (hidden for preset modes) -->
+                <div id="customFields" class="row g-3 mb-3 {% if app_settings.sending_mode != MODE_CUSTOM %}d-none{% endif %}">
+                    <div class="col-sm-6">
+                        <label for="id_daily_limit" class="form-label fw-semibold small">Daily Email Limit</label>
+                        {{ settings_form.daily_limit }}
+                        <div class="form-text small">Max emails to send in one daily batch.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="id_delay_seconds" class="form-label fw-semibold small">Delay Between Sends (s)</label>
+                        {{ settings_form.delay_seconds }}
+                        <div class="form-text small">Pause seconds between emails.</div>
+                    </div>
+                </div>
+
+                <!-- Preset info summary (shown for safe/normal) -->
+                <div id="presetSummary" class="alert alert-secondary py-2 px-3 mb-3 small {% if app_settings.sending_mode == MODE_CUSTOM %}d-none{% endif %}">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <span id="presetSummaryText">
+                        {% if app_settings.sending_mode == MODE_SAFE %}
+                            Limit &amp; delay will be auto-set to <strong>30 emails</strong> and <strong>3.0s</strong> delay.
+                        {% elif app_settings.sending_mode == MODE_NORMAL %}
+                            Limit &amp; delay will be auto-set to <strong>50 emails</strong> and <strong>1.5s</strong> delay.
+                        {% endif %}
+                    </span>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-check2-circle me-1"></i> Apply Mode &amp; Save Settings
+                </button>
+            </form>
+
+            <!-- Current active summary -->
+            <div class="mt-3 pt-3 border-top d-flex justify-content-between text-muted small">
+                <span><i class="bi bi-envelope me-1"></i> Limit: <strong class="text-body">{{ app_settings.daily_limit }}/day</strong></span>
+                <span><i class="bi bi-clock me-1"></i> Delay: <strong class="text-body">{{ app_settings.delay_seconds }}s</strong></span>
+                <span><i class="bi bi-activity me-1"></i> Mode: <strong class="text-body">{{ app_settings.get_sending_mode_display }}</strong></span>
+            </div>
+        </div>
+
+        <!-- Live Render Preview Card -->
+        <div class="card p-4 flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold mb-0"><i class="bi bi-eye text-primary me-2"></i>Live Render Preview</h5>
+                <span class="small text-muted">Test substitution</span>
+            </div>
+
+            <div class="mb-3">
+                <label for="testCompanyInput" class="form-label small text-muted text-uppercase fw-semibold mb-1">
+                    Previewing for Company:
+                </label>
+                <input type="text" id="testCompanyInput" class="form-control form-control-sm" value="Google">
+            </div>
+
+            <div class="border rounded p-3 bg-light flex-grow-1 d-flex flex-column mb-3">
+                <div class="mb-2 pb-2 border-bottom">
+                    <span class="small text-muted d-block fw-semibold">Rendered Subject:</span>
+                    <span id="previewSubject" class="fw-bold text-dark">{{ preview_subject }}</span>
+                </div>
+                <div>
+                    <span class="small text-muted d-block fw-semibold mb-1">Rendered Message:</span>
+                    <div id="previewBody" class="small text-secondary" style="white-space: pre-line; line-height: 1.6;">{{ preview_body }}</div>
+                </div>
+            </div>
+
+            <!-- Send Single Test Email to Yourself -->
+            <form method="POST" action="{% url 'mailer:send_test_email' %}" class="border rounded p-3 bg-white">
+                {% csrf_token %}
+                <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-send-check text-success me-1"></i> Send Test Email To Yourself</h6>
+                <p class="text-muted small mb-2" style="font-size: 0.8rem;">Sends 1 sample email to check formatting. Does NOT touch the 1800+ uploaded contacts.</p>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="email" name="test_email" class="form-control" value="dk.2.yadav28@gmail.com" required placeholder="your-email@gmail.com">
+                    <input type="hidden" name="test_company" id="testCompanyHidden" value="Google">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-send-fill me-1"></i> Send Test Email
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ── Mode selection presets from server ──────────────────────────────
+    const MODE_PRESETS   = {{ mode_presets_json|safe }};
+    const MODE_SAFE      = '{{ MODE_SAFE }}';
+    const MODE_NORMAL    = '{{ MODE_NORMAL }}';
+    const MODE_CUSTOM    = '{{ MODE_CUSTOM }}';
+
+    // Colour map for each mode
+    const MODE_COLORS = {
+        [MODE_SAFE]:   { border: 'border-success', bg: 'bg-success-subtle', text: 'text-success', icon: 'text-success' },
+        [MODE_NORMAL]: { border: 'border-warning',  bg: 'bg-warning-subtle',  text: 'text-warning',  icon: 'text-warning' },
+        [MODE_CUSTOM]: { border: 'border-primary',  bg: 'bg-primary-subtle',  text: 'text-primary',  icon: 'text-primary' },
+    };
+
+    const PRESET_LABELS = {
+        [MODE_SAFE]:   'Limit & delay will be auto-set to <strong>30 emails</strong> and <strong>3.0s</strong> delay.',
+        [MODE_NORMAL]: 'Limit & delay will be auto-set to <strong>50 emails</strong> and <strong>1.5s</strong> delay.',
+    };
+
+    function selectMode(mode) {
+        // Update hidden input
+        document.getElementById('hiddenSendingMode').value = mode;
+
+        // Re-style all cards
+        document.querySelectorAll('.mode-card').forEach(card => {
+            const cardMode = card.dataset.mode;
+            const colors   = MODE_COLORS[cardMode];
+            // Remove all active classes
+            card.classList.remove('border-success','border-warning','border-primary',
+                                  'bg-success-subtle','bg-warning-subtle','bg-primary-subtle');
+            // Remove tick icon if present
+            const tick = card.querySelector('.bi-check-circle-fill');
+            if (tick) tick.remove();
+            // Reset icon colour
+            const icon = card.querySelector('i:first-child, .bi[class*="fs-5"]');
+            if (icon) { icon.classList.remove('text-success','text-warning','text-primary'); icon.classList.add('text-muted'); }
+            // Reset label colour
+            const label = card.querySelector('.fw-bold.small');
+            if (label) { label.classList.remove('text-success','text-warning','text-primary'); }
+
+            card.classList.add('border-light');
+
+            if (cardMode === mode) {
+                card.classList.remove('border-light');
+                card.classList.add(colors.border, colors.bg);
+                // Re-colour icon
+                if (icon) { icon.classList.remove('text-muted'); icon.classList.add(colors.icon); }
+                // Re-colour label
+                if (label) { label.classList.add(colors.text); }
+                // Add tick
+                const newTick = document.createElement('i');
+                newTick.className = `bi bi-check-circle-fill ${colors.icon} mt-1`;
+                card.appendChild(newTick);
+            }
+        });
+
+        // Show/hide custom input fields
+        const customFields   = document.getElementById('customFields');
+        const presetSummary  = document.getElementById('presetSummary');
+        const presetSummText = document.getElementById('presetSummaryText');
+
+        if (mode === MODE_CUSTOM) {
+            customFields.classList.remove('d-none');
+            presetSummary.classList.add('d-none');
+        } else {
+            customFields.classList.add('d-none');
+            presetSummary.classList.remove('d-none');
+            presetSummText.innerHTML = PRESET_LABELS[mode] || '';
+        }
+    }
+
+    // ── Live email preview ──────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        // Add pointer cursor to mode cards
+        document.querySelectorAll('.mode-card').forEach(c => c.style.cursor = 'pointer');
+
+        const subjectInput      = document.getElementById('id_subject');
+        const bodyInput         = document.getElementById('id_body');
+        const testCompanyInput  = document.getElementById('testCompanyInput');
+        const testCompanyHidden = document.getElementById('testCompanyHidden');
+        const previewSubject    = document.getElementById('previewSubject');
+        const previewBody       = document.getElementById('previewBody');
+
+        function updatePreview() {
+            const companyName = testCompanyInput.value || 'Example Company';
+            if (testCompanyHidden) testCompanyHidden.value = companyName;
+            const regex = /\{\{\s*company_name\s*\}\}|\{\s*company_name\s*\}/gi;
+            if (subjectInput && previewSubject) previewSubject.textContent = subjectInput.value.replace(regex, companyName);
+            if (bodyInput && previewBody) previewBody.textContent = bodyInput.value.replace(regex, companyName);
+        }
+
+        if (subjectInput)     subjectInput.addEventListener('input', updatePreview);
+        if (bodyInput)        bodyInput.addEventListener('input', updatePreview);
+        if (testCompanyInput) testCompanyInput.addEventListener('input', updatePreview);
+    });
+</script>
+{% endblock %}
+
