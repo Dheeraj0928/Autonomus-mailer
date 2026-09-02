@@ -54,11 +54,11 @@ def upload_contacts(request: HttpRequest):
             csv_file = request.FILES['csv_file']
             import_result = import_contacts_from_csv(csv_file)
             if import_result['success']:
-                messages.success(
-                    request,
-                    f"Successfully imported {import_result['imported_count']} new contact(s)! "
-                    f"({import_result['duplicate_count']} duplicate(s) skipped)."
-                )
+                msg_parts = [f"Imported {import_result['imported_count']} new contact(s)"]
+                if import_result.get('updated_count'):
+                    msg_parts.append(f"updated {import_result['updated_count']} existing contact(s)")
+                msg_parts.append(f"{import_result['duplicate_count']} duplicate(s) skipped")
+                messages.success(request, f"CSV processed: {', '.join(msg_parts)}.")
             else:
                 messages.error(request, import_result['error'] or "Failed to import CSV file.")
     else:

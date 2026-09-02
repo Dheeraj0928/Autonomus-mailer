@@ -104,10 +104,13 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
             )
             return result
 
-        # Pre-fetch existing emails from DB to minimize database lookups
-        existing_emails = set(Contact.objects.values_list('email', flat=True))
+        result['updated_count'] = 0
+
+        # Pre-fetch existing contacts from DB
+        existing_contacts = {c.email: c for c in Contact.objects.all()}
         seen_in_file = set()
         contacts_to_create = []
+        contacts_to_update = []
 
         data_rows = rows[1:]
         result['total_rows'] = len(data_rows)
@@ -154,12 +157,22 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
 
             normalized_email = email.lower()  # normalize for dedup + consistent storage
 
-            # Duplicate check (case-insensitive)
-            if normalized_email in existing_emails or normalized_email in seen_in_file:
+            if normalized_email in seen_in_file:
                 result['duplicate_count'] += 1
                 continue
 
             seen_in_file.add(normalized_email)
+
+            if normalized_email in existing_contacts:
+                existing_obj = existing_contacts[normalized_email]
+                # If existing contact has missing person name but CSV has it, update it
+                if contact_person and not existing_obj.contact_person:
+                    existing_obj.contact_person = contact_person
+                    contacts_to_update.append(existing_obj)
+                else:
+                    result['duplicate_count'] += 1
+                continue
+
             contacts_to_create.append(
                 Contact(
                     company_name=company_name,
@@ -172,6 +185,10 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
         if contacts_to_create:
             Contact.objects.bulk_create(contacts_to_create)
             result['imported_count'] = len(contacts_to_create)
+
+        if contacts_to_update:
+            Contact.objects.bulk_update(contacts_to_update, ['contact_person'])
+            result['updated_count'] = len(contacts_to_update)
 
         result['success'] = True
         return result
