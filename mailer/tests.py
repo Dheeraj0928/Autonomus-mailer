@@ -52,6 +52,17 @@ class TemplateRenderTests(TestCase):
         rendered = render_template_text(template_text, "Acme Corp")
         self.assertEqual(rendered, "Hello Hiring Team at Acme Corp,\nWelcome to Acme Corp!")
 
+    def test_render_with_contact_person_name(self):
+        template_text = "Hello {{ Name }},\nI want to work at {{ company_name }}."
+        rendered = render_template_text(template_text, "Google", "Gargi")
+        self.assertEqual(rendered, "Hello Gargi,\nI want to work at Google.")
+
+    def test_render_without_contact_person_name_fallback(self):
+        template_text = "Hello {{ Name }},\nI want to work at {{ company_name }}."
+        rendered = render_template_text(template_text, "Google", "")
+        self.assertEqual(rendered, "Hello,\nI want to work at Google.")
+
+
 
 class BatchEmailSendingTests(TestCase):
     def setUp(self):

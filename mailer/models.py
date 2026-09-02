@@ -13,6 +13,10 @@ class Contact(models.Model):
     ]
 
     company_name = models.CharField(max_length=255)
+    contact_person = models.CharField(
+        max_length=255, blank=True, default='',
+        help_text="Optional. HR/Recruiter name (e.g. 'Gargi'). If blank, greeting defaults to 'Hello,'"
+    )
     email = models.EmailField(unique=True, db_index=True)
     status = models.CharField(
         max_length=20,
@@ -35,22 +39,25 @@ class Contact(models.Model):
 
 
 class EmailTemplate(models.Model):
-    DEFAULT_SUBJECT = "Inquiry Regarding Software Engineer Opportunities"
+    DEFAULT_SUBJECT = "Opportunity as Software Engineer/Fresher"
     DEFAULT_BODY = (
-        "Hello Hiring Team at {{ company_name }},\n\n"
-        "I hope you are doing well.\n\n"
-        "I am a recent engineering graduate currently looking for Software Engineer or fresher-level opportunities. "
-        "I wanted to ask if there are any relevant openings available at your company.\n\n"
-        "I would be grateful if you could consider my profile for any suitable opportunities.\n\n"
+        "Hello {{ contact_person }},\n\n"
+        "Hope you are doing well.\n\n"
+        "My name is Dheeraj, and I am currently looking for an opportunity as a Software Engineer/Fresher. "
+        "I wanted to check if there are any openings available at {{ company_name }}.\n\n"
+        "I have been working on my technical skills and projects and would be happy to be considered for any suitable role.\n\n"
+        "You can view my resume here:\n"
+        "https://drive.google.com/file/d/1G_qTw4hwmWoY9QvmH1935kC4t5iltl32/view?usp=drive_link\n\n"
+        "Please let me know if there is any opportunity that matches my profile.\n\n"
         "Thank you for your time.\n\n"
-        "Regards,\n"
+        "Best regards,\n"
         "Dheeraj"
     )
 
     subject = models.CharField(max_length=255, default=DEFAULT_SUBJECT)
     body = models.TextField(
         default=DEFAULT_BODY,
-        help_text="Use {{ company_name }} as a placeholder for the company's name."
+        help_text="Use {{ company_name }} for company name and {{ contact_person }} for HR/recruiter name (auto-removed if blank)."
     )
     updated_at = models.DateTimeField(auto_now=True)
 

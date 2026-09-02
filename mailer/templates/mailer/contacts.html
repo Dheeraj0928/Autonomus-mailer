@@ -75,6 +75,7 @@
                 <tr>
                     <th scope="col" class="ps-4 py-3">#</th>
                     <th scope="col" class="py-3">Company Name</th>
+                    <th scope="col" class="py-3">Contact Person</th>
                     <th scope="col" class="py-3">Email Address</th>
                     <th scope="col" class="py-3">Status</th>
                     <th scope="col" class="py-3">Sent Timestamp</th>
@@ -86,6 +87,7 @@
                     <tr>
                         <td class="ps-4 text-muted small">{{ forloop.counter0|add:page_obj.start_index }}</td>
                         <td class="fw-semibold text-dark">{{ contact.company_name }}</td>
+                        <td class="small text-muted">{{ contact.contact_person|default:"—" }}</td>
                         <td>
                             <a href="mailto:{{ contact.email }}" class="text-decoration-none text-secondary">
                                 {{ contact.email }}
@@ -187,12 +189,16 @@
             <div class="modal-body">
                 <p class="text-muted small mb-3">This contact will be added to the database with <strong>Pending</strong> status and included in the next batch.</p>
                 <div class="mb-3">
-                    <label for="add_company_name" class="form-label fw-semibold">Company / Person Name</label>
-                    <input type="text" id="add_company_name" name="company_name" class="form-control" placeholder="e.g. My Own Test" required>
+                    <label for="add_company_name" class="form-label fw-semibold">Company Name</label>
+                    <input type="text" id="add_company_name" name="company_name" class="form-control" placeholder="e.g. Unicommerce eSolutions" required>
+                </div>
+                <div class="mb-3">
+                    <label for="add_contact_person" class="form-label fw-semibold">Contact Person <span class="text-muted fw-normal">(Optional)</span></label>
+                    <input type="text" id="add_contact_person" name="contact_person" class="form-control" placeholder="e.g. Gargi (HR name, leave blank if unknown)">
                 </div>
                 <div class="mb-0">
                     <label for="add_email" class="form-label fw-semibold">Email Address</label>
-                    <input type="email" id="add_email" name="email" class="form-control" placeholder="e.g. dheeraj1098yadav@gmail.com" required>
+                    <input type="email" id="add_email" name="email" class="form-control" placeholder="e.g. hr@unicommerce.com" required>
                 </div>
             </div>
             <div class="modal-footer">

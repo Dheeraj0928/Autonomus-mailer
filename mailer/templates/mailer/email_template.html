@@ -147,11 +147,19 @@
                 <span class="small text-muted">Test substitution</span>
             </div>
 
-            <div class="mb-3">
-                <label for="testCompanyInput" class="form-label small text-muted text-uppercase fw-semibold mb-1">
-                    Previewing for Company:
-                </label>
-                <input type="text" id="testCompanyInput" class="form-control form-control-sm" value="Google">
+            <div class="row g-2 mb-3">
+                <div class="col-sm-6">
+                    <label for="testCompanyInput" class="form-label small text-muted text-uppercase fw-semibold mb-1">
+                        Company Name:
+                    </label>
+                    <input type="text" id="testCompanyInput" class="form-control form-control-sm" value="Unicommerce eSolutions">
+                </div>
+                <div class="col-sm-6">
+                    <label for="testPersonInput" class="form-label small text-muted text-uppercase fw-semibold mb-1">
+                        HR / Person Name: <span class="text-muted fw-normal text-lowercase">(Optional)</span>
+                    </label>
+                    <input type="text" id="testPersonInput" class="form-control form-control-sm" placeholder="e.g. Gargi (or leave empty)">
+                </div>
             </div>
 
             <div class="border rounded p-3 bg-light flex-grow-1 d-flex flex-column mb-3">
@@ -169,10 +177,11 @@
             <form method="POST" action="{% url 'mailer:send_test_email' %}" class="border rounded p-3 bg-white">
                 {% csrf_token %}
                 <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-send-check text-success me-1"></i> Send Test Email To Yourself</h6>
-                <p class="text-muted small mb-2" style="font-size: 0.8rem;">Sends 1 sample email to check formatting. Does NOT touch the 1800+ uploaded contacts.</p>
+                <p class="text-muted small mb-2" style="font-size: 0.8rem;">Sends 1 sample email to check formatting. Does NOT touch the uploaded contacts.</p>
                 <div class="input-group input-group-sm mb-2">
                     <input type="email" name="test_email" class="form-control" value="dk.2.yadav28@gmail.com" required placeholder="your-email@gmail.com">
-                    <input type="hidden" name="test_company" id="testCompanyHidden" value="Google">
+                    <input type="hidden" name="test_company" id="testCompanyHidden" value="Unicommerce eSolutions">
+                    <input type="hidden" name="test_person" id="testPersonHidden" value="">
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-send-fill me-1"></i> Send Test Email
                     </button>
@@ -263,21 +272,54 @@
         const subjectInput      = document.getElementById('id_subject');
         const bodyInput         = document.getElementById('id_body');
         const testCompanyInput  = document.getElementById('testCompanyInput');
+        const testPersonInput   = document.getElementById('testPersonInput');
         const testCompanyHidden = document.getElementById('testCompanyHidden');
+        const testPersonHidden  = document.getElementById('testPersonHidden');
         const previewSubject    = document.getElementById('previewSubject');
         const previewBody       = document.getElementById('previewBody');
 
+        function renderText(templateText, companyName, personName) {
+            if (!templateText) return "";
+            let text = templateText;
+            // Company name
+            const compRegex = /\{\{\s*(company_name|company|organization)\s*\}\}|\{\s*(company_name|company|organization)\s*\}/gi;
+            text = text.replace(compRegex, companyName || '');
+
+            // Person name
+            const personRegex = /\s*\{\{\s*(contact_person|name|contact_name|hr_name|hr|person_name)\s*\}\}\s*|\s*\{\s*(contact_person|name|contact_name|hr_name|hr|person_name)\s*\}\s*/gi;
+            if (personName && personName.trim()) {
+                text = text.replace(personRegex, ' ' + personName.trim() + ' ');
+            } else {
+                text = text.replace(personRegex, '');
+            }
+
+            text = text.replace(/[ \t]+,/g, ',');
+            text = text.replace(/[ \t]+/g, ' ');
+            return text.trim();
+        }
+
         function updatePreview() {
-            const companyName = testCompanyInput.value || 'Example Company';
+            const companyName = testCompanyInput ? testCompanyInput.value.trim() : 'Unicommerce eSolutions';
+            const personName  = testPersonInput ? testPersonInput.value.trim() : '';
+            
             if (testCompanyHidden) testCompanyHidden.value = companyName;
-            const regex = /\{\{\s*company_name\s*\}\}|\{\s*company_name\s*\}/gi;
-            if (subjectInput && previewSubject) previewSubject.textContent = subjectInput.value.replace(regex, companyName);
-            if (bodyInput && previewBody) previewBody.textContent = bodyInput.value.replace(regex, companyName);
+            if (testPersonHidden)  testPersonHidden.value = personName;
+
+            if (subjectInput && previewSubject) {
+                previewSubject.textContent = renderText(subjectInput.value, companyName, personName);
+            }
+            if (bodyInput && previewBody) {
+                previewBody.textContent = renderText(bodyInput.value, companyName, personName);
+            }
         }
 
         if (subjectInput)     subjectInput.addEventListener('input', updatePreview);
         if (bodyInput)        bodyInput.addEventListener('input', updatePreview);
         if (testCompanyInput) testCompanyInput.addEventListener('input', updatePreview);
+        if (testPersonInput)  testPersonInput.addEventListener('input', updatePreview);
+        
+        // Initial run
+        updatePreview();
     });
 </script>
 {% endblock %}

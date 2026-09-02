@@ -111,8 +111,9 @@ def email_template_view(request: HttpRequest):
 
     # Generate sample preview
     sample_company = "Google"
-    preview_subject = render_template_text(template.subject, sample_company)
-    preview_body = render_template_text(template.body, sample_company)
+    sample_person = "Hiring Team"
+    preview_subject = render_template_text(template.subject, sample_company, sample_person)
+    preview_body = render_template_text(template.body, sample_company, sample_person)
 
     import json
     context = {
@@ -189,6 +190,7 @@ def add_single_contact(request: HttpRequest):
     """Manually add a single contact to the database."""
     if request.method == 'POST':
         company_name = request.POST.get('company_name', '').strip()
+        contact_person = request.POST.get('contact_person', '').strip()
         email = request.POST.get('email', '').strip()
 
         if not company_name:
@@ -203,7 +205,11 @@ def add_single_contact(request: HttpRequest):
                 # Use get_or_create with exact field match (email is already unique+indexed)
                 contact, created = Contact.objects.get_or_create(
                     email=email_normalized,
-                    defaults={'company_name': company_name, 'status': Contact.STATUS_PENDING}
+                    defaults={
+                        'company_name': company_name,
+                        'contact_person': contact_person,
+                        'status': Contact.STATUS_PENDING,
+                    }
                 )
                 if created:
                     messages.success(request, f"Contact '{company_name} <{email_normalized}>' added successfully!")
@@ -240,6 +246,7 @@ def send_test_email_view(request: HttpRequest):
     if request.method == 'POST':
         test_email = request.POST.get('test_email', '').strip()
         test_company = request.POST.get('test_company', 'Google (Test)').strip() or 'Google (Test)'
+        test_person = request.POST.get('test_person', '').strip()
 
         if not test_email:
             messages.error(request, "Please enter a valid email address to receive the test email.")
@@ -253,8 +260,8 @@ def send_test_email_view(request: HttpRequest):
             return redirect('mailer:email_template')
 
         template = EmailTemplate.get_template()
-        rendered_subject = f"[TEST] " + render_template_text(template.subject, test_company)
-        rendered_body = render_template_text(template.body, test_company)
+        rendered_subject = f"[TEST] " + render_template_text(template.subject, test_company, test_person)
+        rendered_body = render_template_text(template.body, test_company, test_person)
         sender = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER
 
         try:
@@ -276,9 +283,9 @@ def download_sample_csv(request: HttpRequest):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="sample_contacts.csv"'
     writer = csv.writer(response)
-    writer.writerow(['company_name', 'email'])
-    writer.writerow(['Google', 'careers@example.com'])
-    writer.writerow(['Microsoft', 'hr@example.com'])
-    writer.writerow(['ABC Company', 'hr@abc.com'])
-    writer.writerow(['Tech Innovators', 'talent@techinnovators.io'])
+    writer.writerow(['company_name', 'contact_person', 'email'])
+    writer.writerow(['Google', 'Sundar', 'careers@google.com'])
+    writer.writerow(['Microsoft', '', 'hr@microsoft.com'])
+    writer.writerow(['Unicommerce eSolutions', 'Gargi', 'gargi.rajan@unicommerce.com'])
+    writer.writerow(['Tech Innovators', '', 'talent@techinnovators.io'])
     return response

@@ -1,7 +1,6 @@
-company_name,email
-Google,careers@google.com
-Microsoft,hr@microsoft.com
-ABC Company,hr@abc.com
-Acme Innovations,talent@acme.com
-Starlight Tech,careers@starlighttech.io
-DevPulse Solutions,jobs@devpulse.example
+company_name,contact_person,email
+Google,Sundar,careers@google.com
+Microsoft,,hr@microsoft.com
+Unicommerce eSolutions,Gargi,gargi.rajan@unicommerce.com
+Acme Innovations,,talent@acme.com
+

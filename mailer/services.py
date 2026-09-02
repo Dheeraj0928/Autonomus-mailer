@@ -17,16 +17,35 @@ def normalize_column_name(name: str) -> str:
     return re.sub(r'[\s_\-]+', '', name.strip().lower())
 
 
-def render_template_text(template_text: str, company_name: str) -> str:
+def render_template_text(template_text: str, company_name: str, contact_person: str = '') -> str:
     """
-    Replace placeholders in email template with actual company name.
-    Supports {{ company_name }}, {{company_name}}, {company_name}, etc.
+    Replace placeholders in email template with actual values.
+    Supports {{ company_name }}, {{ contact_person }}, {{ name }}, {{ Name }}, etc.
+
+    If contact_person/name is blank/empty, the placeholder is cleanly removed
+    so 'Hello {{ Name }},' or 'Hello {{ contact_person }},' becomes simply 'Hello,'
     """
     if not template_text:
         return ""
-    # Case-insensitive replacement for {{ company_name }} and {company_name}
-    pattern = re.compile(r'\{\{\s*company_name\s*\}\}|\{\s*company_name\s*\}', re.IGNORECASE)
-    return pattern.sub(company_name.strip(), template_text)
+
+    # Replace {{ company_name }} and variations: {company_name}, {{ company }}, etc.
+    company_pattern = re.compile(r'\{\{\s*(company_name|company|organization)\s*\}\}|\{\s*(company_name|company|organization)\s*\}', re.IGNORECASE)
+    text = company_pattern.sub(company_name.strip() if company_name else '', template_text)
+
+    # Replace {{ name }}, {{ Name }}, {{ contact_person }}, {{ hr_name }}, etc.
+    person_name = contact_person.strip() if contact_person else ''
+    person_pattern = re.compile(r'\s*\{\{\s*(contact_person|name|contact_name|hr_name|hr|person_name)\s*\}\}\s*|\s*\{\s*(contact_person|name|contact_name|hr_name|hr|person_name)\s*\}\s*', re.IGNORECASE)
+
+    if person_name:
+        text = person_pattern.sub(f" {person_name} ", text)
+    else:
+        # If no name, remove placeholder cleanly without leaving double spaces or space before comma
+        text = person_pattern.sub('', text)
+
+    # Fix formatting: "Hello ," -> "Hello," or multiple spaces -> single space
+    text = re.sub(r'[ \t]+,', ',', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    return text.strip()
 
 
 def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
@@ -67,6 +86,7 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
         header = rows[0]
         company_idx = None
         email_idx = None
+        person_idx = None  # optional: HR/recruiter name
 
         for idx, col in enumerate(header):
             normalized = normalize_column_name(col)
@@ -74,6 +94,8 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
                 company_idx = idx
             elif normalized in ['email', 'emailaddress', 'mail', 'contactemail', 'hremail']:
                 email_idx = idx
+            elif normalized in ['name', 'contactperson', 'personname', 'hrname', 'contactname', 'firstname']:
+                person_idx = idx
 
         if company_idx is None or email_idx is None:
             result['error'] = (
@@ -98,6 +120,7 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
             # Extract fields safely
             company_name = row[company_idx].strip() if company_idx < len(row) else ""
             email = row[email_idx].strip() if email_idx < len(row) else ""
+            contact_person = row[person_idx].strip() if (person_idx is not None and person_idx < len(row)) else ""
 
             if not company_name:
                 result['invalid_rows'].append({
@@ -140,6 +163,7 @@ def import_contacts_from_csv(file_obj) -> Dict[str, Any]:
             contacts_to_create.append(
                 Contact(
                     company_name=company_name,
+                    contact_person=contact_person,
                     email=normalized_email,  # always store lowercase to avoid case-based duplicates
                     status=Contact.STATUS_PENDING
                 )
@@ -162,8 +186,8 @@ def send_single_email(contact: Contact, template: EmailTemplate, from_email: Opt
     Send an inquiry email to a single Contact using the active EmailTemplate.
     Updates contact state in database.
     """
-    rendered_subject = render_template_text(template.subject, contact.company_name)
-    rendered_body = render_template_text(template.body, contact.company_name)
+    rendered_subject = render_template_text(template.subject, contact.company_name, contact.contact_person)
+    rendered_body = render_template_text(template.body, contact.company_name, contact.contact_person)
     sender = from_email or settings.DEFAULT_FROM_EMAIL
 
     try:
